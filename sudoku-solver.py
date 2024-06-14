@@ -22,6 +22,7 @@ def main() -> None:
     [0, 0, 0, 4, 1, 9, 0, 0, 5],
     [0, 0, 0, 0, 8, 0, 0, 7, 9]
     ])
+
     # Creates the root window
     root = tk.Tk()
     root.title("Sudoku Solver")
@@ -29,17 +30,28 @@ def main() -> None:
     # Creates canvas object to display sudoku board
     canvas = tk.Canvas(root, width=9*CELL_SIZE, height=9*CELL_SIZE, 
                        borderwidth=0, highlightthickness=0)
-    canvas.pack()
+    canvas.pack(pady=10)
+    display_board(canvas, sample_puzzle)
+
+    # Initializes maps containing the numbers in the initial board
+    rows, columns, cells = initialize_maps(sample_puzzle)
+
+    def on_click()-> None:
+        """
+        Calls the solve_board function when the button is clicked.
+        """
+        if solve_board(sample_puzzle, rows, columns, cells):
+            display_board(canvas, sample_puzzle)
+        else:
+            exit()
+
+    # Creates clickable button to solve the sudoku puzzle.
+    button = tk.Button(root, text="Solve puzzle!", command=on_click, font=("Arial", 16), width=12, height=1)
+    button.pack()
 
     # Configures root window size
     root.geometry(f"{DEF_XMIN}x{DEF_YMIN}")
     root.minsize(DEF_XMIN, DEF_YMIN)
-    
-    # Initializes maps containing the numbers in the initial board
-    rows, columns, cells = initialize_maps(sample_puzzle)
-
-    solve_board(sample_puzzle, rows, columns, cells)
-    display_board(canvas, sample_puzzle)
 
     root.mainloop()
 
@@ -51,6 +63,8 @@ def display_board(canvas, board: list[list[int]]) -> None:
         canvas: Canvas object for the board display.
         board (list[list[int]]): 9x9 matrix containing the sudoku board.
     """
+    # Clears canvas
+    canvas.delete("all")
     # Draws the lines of the sudoku grid
     for i in range(len(board) + 1):
         width = 1 if i % 3 != 0 else 2
@@ -150,10 +164,6 @@ def initialize_maps(board: list[list[int]]) -> tuple[list[set], list[set], list[
                     exit()
                 else: 
                     cells[cell].add(num)                  
-
-    print(f"{rows}\n")
-    print(f"{columns}\n")
-    print(f"{cells}")
 
     # Returns maps
     return rows, columns, cells
