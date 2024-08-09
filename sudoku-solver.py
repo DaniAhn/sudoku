@@ -1,27 +1,18 @@
 import numpy as np
 import tkinter as tk
+import tkinter.simpledialog as simpledialog
+import random
 
 DEF_XMIN = 800 # Default minimum x value for window size
 DEF_YMIN = 600 # Default minimum y value for window size
 
 CELL_SIZE = 50 # Default size for each cell of the board display
 
-def main() -> None:
+def main()-> None:
     """
     Main entry point of the program.
     """
-    # Sample sudoku board
-    sample_puzzle = np.array([
-    [5, 3, 0, 0, 7, 0, 0, 0, 0],
-    [6, 0, 0, 1, 9, 5, 0, 0, 0],
-    [0, 9, 8, 0, 0, 0, 0, 6, 0],
-    [8, 0, 0, 0, 6, 0, 0, 0, 3],
-    [4, 0, 0, 8, 0, 3, 0, 0, 1],
-    [7, 0, 0, 0, 2, 0, 0, 0, 6],
-    [0, 6, 0, 0, 0, 0, 2, 8, 0],
-    [0, 0, 0, 4, 1, 9, 0, 0, 5],
-    [0, 0, 0, 0, 8, 0, 0, 7, 9]
-    ])
+    board = random_puzzle()
 
     # Creates the root window
     root = tk.Tk()
@@ -31,22 +22,53 @@ def main() -> None:
     canvas = tk.Canvas(root, width=9*CELL_SIZE, height=9*CELL_SIZE, 
                        borderwidth=0, highlightthickness=0)
     canvas.pack(pady=10)
-    display_board(canvas, sample_puzzle)
+    display_board(canvas, board)
 
     # Initializes maps containing the numbers in the initial board
-    rows, columns, cells = initialize_maps(sample_puzzle)
+    rows, columns, cells = initialize_maps(board)
 
     def on_click()-> None:
         """
         Calls the solve_board function when the button is clicked.
         """
-        if solve_board(sample_puzzle, rows, columns, cells):
-            display_board(canvas, sample_puzzle)
+        if solve_board(board, rows, columns, cells):
+            display_board(canvas, board)
         else:
             exit()
 
+    def input_number(event: tk.Event)-> None:
+        """
+        Handles player input on the sudoku board.
+
+        Args:
+            event (tk.Event): Represents a click event. 
+        """
+        # Calculates position of the click on the sudoku board.
+        col = event.x // CELL_SIZE
+        row = event.y // CELL_SIZE
+        cell = (row // 3) * 3 + (col // 3)
+        
+        # Checks if space is empty.
+        if board[row][col] == 0: 
+            # Opens a dialogue box to input an integer from 1-9.
+            user_input = tk.simpledialog.askinteger("Input", "Enter a number (1-9):")
+            
+            # Checks if user input is a valid move.
+            if user_input and 1 <= user_input <= 9 and is_safe(rows, columns, cells, user_input, row, col, cell): 
+                # Adds input number to the current board.
+                board[row][col] = user_input
+                rows[row].add(user_input)
+                columns[col].add(user_input)
+                cells[cell].add(user_input)
+                display_board(canvas, board)
+            else:
+                tk.messagebox.showerror("Error", "Invalid move.")
+
+    # Bind click event to canvas
+    canvas.bind("<Button-1>", input_number)
+
     # Creates clickable button to solve the sudoku puzzle.
-    button = tk.Button(root, text="Solve puzzle!", command=on_click, font=("Arial", 16), width=12, height=1)
+    button = tk.Button(root, text="Solve puzzle!", command=on_click, font=("Georgia", 16), width=12, height=1)
     button.pack()
 
     # Configures root window size
@@ -55,13 +77,90 @@ def main() -> None:
 
     root.mainloop()
 
-def display_board(canvas, board: list[list[int]]) -> None:
+def random_puzzle()-> np.array:
+    """
+    Returns a random sudoku puzzle picked from a list of sample puzzles.
+
+    Returns:
+        np.array: Array representing a sudoku puzzle.
+    """
+    sample_puzzles = [
+        np.array([
+            [5, 3, 0, 0, 7, 0, 0, 0, 0],
+            [6, 0, 0, 1, 9, 5, 0, 0, 0],
+            [0, 9, 8, 0, 0, 0, 0, 6, 0],
+            [8, 0, 0, 0, 6, 0, 0, 0, 3],
+            [4, 0, 0, 8, 0, 3, 0, 0, 1],
+            [7, 0, 0, 0, 2, 0, 0, 0, 6],
+            [0, 6, 0, 0, 0, 0, 2, 8, 0],
+            [0, 0, 0, 4, 1, 9, 0, 0, 5],
+            [0, 0, 0, 0, 8, 0, 0, 7, 9]
+        ]),
+        np.array([
+            [5, 3, 0, 0, 7, 0, 0, 0, 0],
+            [6, 0, 0, 1, 9, 5, 0, 0, 0],
+            [0, 9, 8, 0, 0, 0, 0, 6, 0],
+            [8, 0, 0, 0, 6, 0, 0, 0, 3],
+            [4, 0, 0, 8, 0, 3, 0, 0, 1],
+            [7, 0, 0, 0, 2, 0, 0, 0, 6],
+            [0, 6, 0, 0, 0, 0, 2, 8, 0],
+            [0, 0, 0, 4, 1, 9, 0, 0, 5],
+            [0, 0, 0, 0, 8, 0, 0, 7, 9]
+        ]),
+        np.array([
+            [8, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 3, 6, 0, 0, 0, 0, 0],
+            [0, 7, 0, 0, 9, 0, 2, 0, 0],
+            [0, 5, 0, 0, 0, 7, 0, 0, 0],
+            [0, 0, 0, 0, 4, 5, 7, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 3, 0],
+            [0, 0, 1, 0, 0, 0, 0, 6, 8],
+            [0, 0, 8, 5, 0, 0, 0, 1, 0],
+            [0, 9, 0, 0, 0, 0, 4, 0, 0]
+        ]),
+        np.array([
+            [0, 0, 0, 0, 0, 0, 2, 0, 0],
+            [0, 0, 0, 6, 0, 0, 0, 0, 3],
+            [0, 0, 3, 0, 0, 0, 0, 4, 5],
+            [0, 0, 8, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 3, 7, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 5, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 6, 8, 0, 0, 0],
+            [0, 0, 0, 4, 0, 0, 7, 0, 0]
+        ]),
+        np.array([
+            [0, 2, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 6, 0, 0, 0, 0, 3],
+            [0, 7, 4, 0, 8, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 3, 0, 0, 2],
+            [0, 8, 0, 0, 4, 0, 0, 6, 0],
+            [0, 0, 0, 0, 0, 0, 0, 9, 0],
+            [5, 0, 0, 0, 0, 0, 6, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 8, 0],
+            [0, 0, 7, 0, 0, 0, 0, 0, 0]
+        ]),
+        np.array([
+            [0, 0, 0, 2, 0, 0, 0, 6, 3],
+            [3, 0, 0, 0, 0, 5, 4, 0, 1],
+            [0, 0, 1, 0, 0, 3, 9, 8, 0],
+            [0, 0, 0, 0, 0, 0, 0, 9, 0],
+            [0, 0, 0, 5, 3, 8, 0, 0, 0],
+            [0, 3, 0, 0, 0, 0, 0, 0, 0],
+            [0, 2, 6, 3, 0, 0, 5, 0, 0],
+            [5, 0, 3, 7, 0, 0, 0, 0, 8],
+            [4, 7, 0, 0, 0, 1, 0, 0, 0]
+        ])
+    ]
+    return sample_puzzles[random.randint(0, len(sample_puzzles))]
+
+def display_board(canvas: tk.Canvas, board: np.ndarray)-> None:
     """
     Displays the current sudoku board.
 
     Args:
-        canvas: Canvas object for the board display.
-        board (list[list[int]]): 9x9 matrix containing the sudoku board.
+        canvas (tk.Canvas): Canvas object for the board display.
+        board (np.ndarray): 9x9 matrix containing the sudoku board.
     """
     # Clears canvas
     canvas.delete("all")
@@ -80,18 +179,18 @@ def display_board(canvas, board: list[list[int]]) -> None:
             if num != 0:
                 x = col * CELL_SIZE + CELL_SIZE / 2
                 y = row * CELL_SIZE + CELL_SIZE / 2
-                canvas.create_text(x, y, text=f"{num}", font=("Arial", 16))
+                canvas.create_text(x, y, text=f"{int(num)}", font=("Georgia", 16))
 
-def solve_board(board: list[list[int]], rows: list[set], columns: list[set], 
+def solve_board(board: np.ndarray, rows: list[set], columns: list[set], 
                 cells: list[set]) -> bool:
     """
     Solves the given sudoku board.
 
     Args:
-        board (list[list[int]]): 9x9 matrix containing the sudoku board.
-        rows (list[set]): List containing maps of the current numbers in each row.
-        columns (list[set]): List containing maps of the current numbers in each column.
-        cells (list[set]): List containing maps of the current numbers in each cell.
+        board (np.ndarray): 9x9 matrix containing the sudoku board.
+        rows (list[set[int]]): List containing maps of the current numbers in each row.
+        columns (list[set[int]]): List containing maps of the current numbers in each column.
+        cells (list[set[int]]): List containing maps of the current numbers in each cell.
 
     Returns:
         bool: Indicates whether the current solution path is correct.
@@ -124,15 +223,15 @@ def solve_board(board: list[list[int]], rows: list[set], columns: list[set],
     
     return False
 
-def initialize_maps(board: list[list[int]]) -> tuple[list[set], list[set], list[set]]:
+def initialize_maps(board: np.ndarray)-> tuple[list[set[int]]]:
     """
     Initializes maps containing the numbers on the board contained in each
     row, column and cell.
 
     Args:
-        board (list[list[int]]): 9x9 matrix containing the sudoku board.
+        board (np.ndarray): 9x9 matrix containing the sudoku board.
     Returns:
-        tuple[list[set], list[set], list[set]]: Tuple containing each map.
+        tuple[list[set[int]]]: Tuple containing each map.
     """
     # Initializes as lists of sets representing units of each type
     rows = [set() for i in range(9)]
@@ -174,9 +273,9 @@ def is_safe(rows: list[set], columns: list[set], cells: list[set], num: int,
     Checks whether the given number is a valid option for the solution path.
 
     Args:
-        rows (list[set]): List containing maps of the current numbers in each row.
-        columns (list[set]): List containing maps of the current numbers in each column.
-        cells (list[set]): List containing maps of the current numbers in each cell. 
+        rows (list[set[int]]): List containing maps of the current numbers in each row.
+        columns (list[set[int]]): List containing maps of the current numbers in each column.
+        cells (list[set[int]]): List containing maps of the current numbers in each cell. 
         num (int): The current number being evaluated.
         row (int): Index of the current row.
         col (int): Index of the current column.
@@ -192,12 +291,12 @@ def is_safe(rows: list[set], columns: list[set], cells: list[set], num: int,
     
     return False
 
-def next_available(board: list[list[int]]) -> tuple[int]:
+def next_available(board: np.ndarray) -> tuple[int]:
     """
     Retrieves the index of the next available slot in the sudoku board.
 
     Args:
-        board (list[list[int]]): 9x9 matrix containing the sudoku board.
+        board (np.ndarray): 9x9 matrix containing the sudoku board.
     Returns:
         tuple[int]: Tuple containing the coordinates for the index of the next available slot.
     """
